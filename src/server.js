@@ -5,6 +5,7 @@
 
 // node: na frente do modulo interno do node
 import http from 'node:http';
+import { json } from './middlewares/json.js';
 
 // GET => Buscar infos
 // POST => Criar um recurso
@@ -21,22 +22,10 @@ const users = [];
 const server = http.createServer(async (req, res) => {
     const { method, url } = req;
 
-    const buffers = [];
-
-    for await ( const chunck of req ) {
-        buffers.push(chunck);
-    }
-
-    try {
-        req.body = JSON.parse(Buffer.concat(buffers).toString());
-    } catch (e) {
-        req.body = null;
-    }
+    await json(req, res);
 
     if(method === 'GET' && url === '/users') {
-        // res.setHeader('Content-Type', 'application/json') -> estamos falando qual o tipo de conteudo que estamos retornando
         return res
-        .setHeader('Content-Type', 'application/json') 
         .end(JSON.stringify(users));
     }
 
