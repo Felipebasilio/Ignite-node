@@ -6,6 +6,10 @@
 // node: na frente do modulo interno do node
 import http from 'node:http';
 import { json } from './middlewares/json.js';
+import { Database } from './database.js';
+import { randomUUID } from 'node:crypto';
+
+// UUID -> Universally Unique Identifier
 
 // GET => Buscar infos
 // POST => Criar um recurso
@@ -17,7 +21,7 @@ import { json } from './middlewares/json.js';
 
 // Headers => Informações adicionais para a requisição (metadados)
 
-const users = [];
+const database = new Database();
 
 const server = http.createServer(async (req, res) => {
     const { method, url } = req;
@@ -25,6 +29,8 @@ const server = http.createServer(async (req, res) => {
     await json(req, res);
 
     if(method === 'GET' && url === '/users') {
+        const users = database.select('users');
+
         return res
         .end(JSON.stringify(users));
     }
@@ -32,11 +38,13 @@ const server = http.createServer(async (req, res) => {
     if(method === 'POST' && url === '/users') {
         const { name, email } = req.body;
 
-        users.push({
-            id: 1,
+        const user = {
+            id: randomUUID(),
             name,
             email
-        });
+        };
+
+        database.insert('users', user);
 
         // 201 => Request succeeded and new resource has been created
         return res
