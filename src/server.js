@@ -18,8 +18,20 @@ import http from 'node:http';
 
 const users = [];
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
     const { method, url } = req;
+
+    const buffers = [];
+
+    for await ( const chunck of req ) {
+        buffers.push(chunck);
+    }
+
+    try {
+        req.body = JSON.parse(Buffer.concat(buffers).toString());
+    } catch (e) {
+        req.body = null;
+    }
 
     if(method === 'GET' && url === '/users') {
         // res.setHeader('Content-Type', 'application/json') -> estamos falando qual o tipo de conteudo que estamos retornando
@@ -29,10 +41,12 @@ const server = http.createServer((req, res) => {
     }
 
     if(method === 'POST' && url === '/users') {
+        const { name, email } = req.body;
+
         users.push({
             id: 1,
-            name: 'Diego',
-            email: 'diego@rocket.com'
+            name,
+            email
         });
 
         // 201 => Request succeeded and new resource has been created
