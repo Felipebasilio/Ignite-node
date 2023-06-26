@@ -1,15 +1,11 @@
-// Não temos acesso ao document, ja uqe sao apis do browser. Aqui vamos usar Rest APIs
+// Não temos acesso ao document, ja que são apis do browser. Aqui vamos usar Rest APIs
 // Para importar pacotes com o ESModules (import tanana from tanana), precisamos colocar um type: module no package.json.
 // Caso contrário temos q importar usando CommonJS, exemplo abaixo
 // const http = require('http');
 
 // node: na frente do modulo interno do node
-import http from 'node:http';
-import { json } from './middlewares/json.js';
-import { Database } from './database.js';
-import { randomUUID } from 'node:crypto';
 
-// UUID -> Universally Unique Identifier
+// UUID => Universally Unique Identifier
 
 // GET => Buscar infos
 // POST => Criar um recurso
@@ -21,40 +17,40 @@ import { randomUUID } from 'node:crypto';
 
 // Headers => Informações adicionais para a requisição (metadados)
 
-const database = new Database();
+// Query Parameters => Paginação, filtros, ordenação : URL Statefull
+// |-> http://localhost:3333/users?search=Diego&page=2&sort=name
+// Route Parameters => Identificar um recurso na hora de atualizar ou deletar
+// |-> http://localhost:3333/users/1
+// Request Body => Envio de informações de um formulário (passam pelo HTTPS)
+// |-> Não fica na URL, fica no corpo da requisição enviado a parte junto do body
+
+import http from "node:http";
+import { json } from "./middlewares/json.js";
+import { routes } from "./routes.js";
+import { extractQueryParams } from "./utils/extract-query-params.js";
 
 const server = http.createServer(async (req, res) => {
-    const { method, url } = req;
+  const { method, url } = req;
 
-    await json(req, res);
+  await json(req, res);
 
-    if(method === 'GET' && url === '/users') {
-        const users = database.select('users');
+  const route = routes.find(route => {
+    return route.method === method && route.path.test(url);
+  });
 
-        return res
-        .end(JSON.stringify(users));
-    }
+  if (route) {
+    // Não quero mais executar um true ou false, quero executar a regex na minha url pra retornar quais os dados q a regex encontrou na rota
+    const routeParams = req.url.match(route.path);
 
-    if(method === 'POST' && url === '/users') {
-        const { name, email } = req.body;
+    const { query, ...params } = routeParams.groups;
 
-        const user = {
-            id: randomUUID(),
-            name,
-            email
-        };
+    req.params = params;
+    req.query = query ? extractQueryParams(query) : {};
 
-        database.insert('users', user);
+    return route.handler(req, res);
+  }
 
-        // 201 => Request succeeded and new resource has been created
-        return res
-        .writeHead(201)
-        .end();
-    }
-    
-    return res
-    .writeHead(404)
-    .end();
+  return res.writeHead(404).end();
 });
 
 server.listen(3333);
